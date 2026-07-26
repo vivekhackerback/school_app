@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { API_CONFIG } from './config';
+import { API_CONFIG } from '@/constants/config';
 
 // Define the notification types and interfaces
 type CategoryType = 'All' | 'Academics' | 'Events' | 'Alerts' | 'Payments';
@@ -331,7 +331,7 @@ export default function NotificationsScreen() {
           {unreadCount > 0 && !loading && !error && (
             <Pressable 
               onPress={handleMarkAllRead}
-              style={({ pressed }) => [styles.markReadButton, pressed && styles.pressedState]}
+              style={({ pressed }) => [styles.markReadButton, pressed ? styles.pressedState : undefined]}
             >
               <ThemedText style={styles.markReadText}>Mark all read</ThemedText>
             </Pressable>
@@ -400,7 +400,7 @@ export default function NotificationsScreen() {
               onPress={() => fetchNotifications(true)}
               style={({ pressed }) => [
                 styles.retryButton,
-                pressed && styles.pressedState
+                pressed ? styles.pressedState : undefined
               ]}
             >
               <ThemedText style={styles.retryButtonText}>Retry Fetching</ThemedText>
@@ -447,9 +447,9 @@ export default function NotificationsScreen() {
                     style={({ pressed }) => [
                       styles.card,
                       isDark ? styles.cardDark : styles.cardLight,
-                      item.isUnread && (isDark ? styles.cardUnreadDark : styles.cardUnreadLight),
-                      item.priority === 'Emergency' && { borderColor: '#f43f5e', borderWidth: 1.5 },
-                      pressed && styles.pressedStateCard,
+                      item.isUnread ? (isDark ? styles.cardUnreadDark : styles.cardUnreadLight) : undefined,
+                      item.priority === 'Emergency' ? { borderColor: '#f43f5e', borderWidth: 1.5 } : undefined,
+                      pressed ? styles.pressedStateCard : undefined,
                     ]}
                   >
                     <View style={styles.cardHeader}>
@@ -540,7 +540,7 @@ export default function NotificationsScreen() {
                             >
                               <ThemedText style={[
                                 styles.langTabText, 
-                                activeLang === 'en' && styles.langTabTextActive
+                                activeLang === 'en' ? styles.langTabTextActive : undefined
                               ]}>
                                 English
                               </ThemedText>
@@ -560,7 +560,7 @@ export default function NotificationsScreen() {
                             >
                               <ThemedText style={[
                                 styles.langTabText, 
-                                activeLang === 'hi' && styles.langTabTextActive
+                                activeLang === 'hi' ? styles.langTabTextActive : undefined
                               ]}>
                                 हिंदी (Hindi)
                               </ThemedText>
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
   neonBadgeText: {
     color: '#ffffff',
     fontSize: 8,
-    fontWeight: '950',
+    fontWeight: '900',
     letterSpacing: 0.5,
   },
   timeContainer: {
@@ -1005,4 +1005,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-});
+}) as any;
