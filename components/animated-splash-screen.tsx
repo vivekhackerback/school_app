@@ -18,46 +18,42 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Run the intro animations in sequence / parallel
+    // Run the intro animations in parallel for instant loading appearance
     Animated.sequence([
-      // Step 1: Scale and fade in the logo
+      // Step 1: Scale and fade in everything together
       Animated.parallel([
         Animated.timing(logoScale, {
           toValue: 1.0,
-          duration: 1000,
+          duration: 400,
           useNativeDriver: true,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
-          duration: 800,
+          duration: 350,
           useNativeDriver: true,
         }),
-      ]),
-      // Step 2: Slide up and fade in the main title
-      Animated.parallel([
         Animated.timing(textTranslateY, {
           toValue: 0,
-          duration: 600,
+          duration: 400,
           useNativeDriver: true,
         }),
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 600,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tagOpacity, {
+          toValue: 1,
+          duration: 300,
           useNativeDriver: true,
         }),
       ]),
-      // Step 3: Fade in the tagline
-      Animated.timing(tagOpacity, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      // Step 4: Keep visible for a brief moment
-      Animated.delay(1000),
-      // Step 5: Fade out the entire container
+      // Step 2: Keep visible for a brief moment
+      Animated.delay(200),
+      // Step 3: Fade out the entire container
       Animated.timing(containerOpacity, {
         toValue: 0,
-        duration: 600,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start(() => {

@@ -127,8 +127,21 @@ export default function NotificationsScreen() {
       setLoading(true);
     }
     setError(null);
+    
+    // Create an AbortController to enforce a 6-second timeout limit
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 6000);
+
     try {
-      const response = await fetch(API_CONFIG.API_URL);
+      const response = await fetch(API_CONFIG.API_URL, {
+        signal: controller.signal,
+      });
+      
+      // Request completed, clear the timeout
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
       }
@@ -156,8 +169,14 @@ export default function NotificationsScreen() {
         throw new Error('API request succeeded, but returned an invalid data format.');
       }
     } catch (err: any) {
+      clearTimeout(timeoutId); // Ensure timeout is cleared on error
       console.error('Fetch error:', err);
-      setError(err.message || 'Failed to fetch notifications. Please check your network connection.');
+      
+      if (err.name === 'AbortError') {
+        setError('Connection timed out (6s). The school server took too long to respond. Please check if your ngrok tunnel is running and active.');
+      } else {
+        setError(err.message || 'Failed to fetch notifications. Please check your network connection.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

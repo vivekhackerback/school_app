@@ -21,18 +21,16 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Perform initialization tasks here if needed.
-        // We add a small delay to make sure the app context is mounted.
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (e) {
-        console.warn(e);
+        // App is immediately ready to mount.
+      } catch {
+        // Handled silently
       } finally {
         setAppReady(true);
         // Hide native splash screen so the animated one can play
         try {
           await SplashScreen.hideAsync();
-        } catch (e) {
-          console.warn(e);
+        } catch {
+          // Handled silently
         }
       }
     }
