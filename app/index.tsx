@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   AppState,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
@@ -218,7 +219,7 @@ export default function NotificationsScreen() {
     // Initial fetch with full-screen loading spinner
     fetchNotifications(true);
 
-    let intervalId: NodeJS.Timeout;
+    let intervalId: ReturnType<typeof setInterval>;
 
     const startPolling = () => {
       // Clear any existing timer first
@@ -439,6 +440,18 @@ export default function NotificationsScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#151718' : '#ffffff'} />
       <ThemedView style={styles.container}>
         
+        {/* Watermark Background School Logo */}
+        <View pointerEvents="none" style={styles.watermarkContainer}>
+          <Image
+            source={require('@/assets/images/global-minds-logo.png')}
+            style={[
+              styles.watermarkImage,
+              { opacity: isDark ? 0.04 : 0.06 }
+            ]}
+            resizeMode="contain"
+          />
+        </View>
+
         {/* Custom Premium Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>
@@ -838,15 +851,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cardLight: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
     borderColor: '#f1f5f9',
   },
   cardDark: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
     borderColor: '#334155',
   },
   cardUnreadLight: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(248, 250, 252, 0.88)',
     borderColor: '#bae6fd', // light sky border
     shadowColor: '#0284c7',
     shadowOffset: { width: 0, height: 2 },
@@ -855,7 +868,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardUnreadDark: {
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
     borderColor: '#0369a1', // dark sky border
   },
   pressedStateCard: {
@@ -1128,5 +1141,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  watermarkContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: -1,
+  },
+  watermarkImage: {
+    width: 300,
+    height: 300,
   },
 }) as any;
