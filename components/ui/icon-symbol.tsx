@@ -28,6 +28,11 @@ const MAPPING = {
   'checkmark.circle.fill': 'check-circle',
   'chevron.left': 'chevron-left',
   'clock.fill': 'access-time',
+  'bus.fill': 'directions-bus',
+  'doc.text.fill': 'assignment',
+  'doc.append': 'quiz',
+  'sun.max.fill': 'beach-access',
+  'speaker.wave.3.fill': 'campaign',
 } as IconMapping;
 
 /**

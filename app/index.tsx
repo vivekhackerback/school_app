@@ -33,9 +33,9 @@ interface NotificationItem {
   isFlashing?: boolean;
 }
 
-// Helper to convert created_at timestamp to friendly relative time
-const formatTime = (createdAtString: string): string => {
-  if (!createdAtString) return '';
+// Helper to convert created_at timestamp to friendly relative time safely
+const formatTime = (createdAtString: any): string => {
+  if (!createdAtString || typeof createdAtString !== 'string') return '';
   try {
     // Replace space with T to make ISO parsing reliable across platforms (especially iOS)
     const date = new Date(createdAtString.replace(' ', 'T'));
@@ -80,8 +80,30 @@ export default function NotificationsScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Filter and language configurations
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
-  const categories: CategoryType[] = ['All', 'Academics', 'Events', 'Alerts', 'Payments'];
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  
+  // Dynamically derive categories from raw notifications, pre-seeding all 10 backend defaults
+  const categories = useMemo(() => {
+    const defaults = [
+      'Alerts',
+      'Academics',
+      'Payments',
+      'Events',
+      'Examination',
+      'Homework',
+      'Holiday',
+      'Transport',
+      'Circular',
+      'General'
+    ];
+    const unique = new Set<string>(defaults);
+    rawNotifications.forEach(item => {
+      if (String(item.is_app) === '1' && item.category && item.category !== 'All') {
+        unique.add(item.category);
+      }
+    });
+    return ['All', ...Array.from(unique)];
+  }, [rawNotifications]);
   
   // Track expanded cards
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
@@ -135,8 +157,15 @@ export default function NotificationsScreen() {
     }, 6000);
 
     try {
-      const response = await fetch(API_CONFIG.API_URL, {
+      // Bypass HTTP caching by appending a cache-buster timestamp and headers
+      const busterUrl = `${API_CONFIG.API_URL}${API_CONFIG.API_URL.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      const response = await fetch(busterUrl, {
         signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
       });
       
       // Request completed, clear the timeout
@@ -196,7 +225,10 @@ export default function NotificationsScreen() {
 
   // Derive notifications from raw data and read states dynamically
   const notifications: NotificationItem[] = useMemo(() => {
-    return rawNotifications.map((item: any) => {
+    // Filter rawNotifications to only include ones intended for the app (is_app === 1)
+    const appNotifs = rawNotifications.filter(item => String(item.is_app) === '1');
+
+    return appNotifs.map((item: any) => {
       const idStr = String(item.id);
       const isRead = !!readIds[idStr];
       return {
@@ -263,13 +295,25 @@ export default function NotificationsScreen() {
   }, [notifications]);
 
   // Get icon and color scheme based on category
-  const getCategoryDetails = (category: CategoryType) => {
+  const getCategoryDetails = (category: string) => {
     switch (category) {
+      case 'Alerts':
+        return {
+          icon: 'exclamationmark.triangle.fill' as const,
+          bgColor: isDark ? '#7f1d1d' : '#fef2f2',
+          iconColor: isDark ? '#f87171' : '#dc2626',
+        };
       case 'Academics':
         return {
           icon: 'book.closed.fill' as const,
           bgColor: isDark ? '#1e3a8a' : '#eff6ff',
           iconColor: isDark ? '#60a5fa' : '#2563eb',
+        };
+      case 'Payments':
+        return {
+          icon: 'creditcard.fill' as const,
+          bgColor: isDark ? '#78350f' : '#fffbeb',
+          iconColor: isDark ? '#fbbf24' : '#d97706',
         };
       case 'Events':
         return {
@@ -277,17 +321,41 @@ export default function NotificationsScreen() {
           bgColor: isDark ? '#4c1d95' : '#f5f3ff',
           iconColor: isDark ? '#a78bfa' : '#7c3aed',
         };
-      case 'Alerts':
+      case 'Examination':
         return {
-          icon: 'exclamationmark.triangle.fill' as const,
-          bgColor: isDark ? '#7f1d1d' : '#fef2f2',
-          iconColor: isDark ? '#f87171' : '#dc2626',
+          icon: 'doc.append' as const,
+          bgColor: isDark ? '#14532d' : '#f0fdf4',
+          iconColor: isDark ? '#4ade80' : '#16a34a',
         };
-      case 'Payments':
+      case 'Homework':
         return {
-          icon: 'creditcard.fill' as const,
-          bgColor: isDark ? '#78350f' : '#fffbeb',
-          iconColor: isDark ? '#fbbf24' : '#d97706',
+          icon: 'doc.text.fill' as const,
+          bgColor: isDark ? '#5c1d40' : '#fdf2f8',
+          iconColor: isDark ? '#f472b6' : '#db2777',
+        };
+      case 'Holiday':
+        return {
+          icon: 'sun.max.fill' as const,
+          bgColor: isDark ? '#431407' : '#fff7ed',
+          iconColor: isDark ? '#fb923c' : '#ea580c',
+        };
+      case 'Transport':
+        return {
+          icon: 'bus.fill' as const,
+          bgColor: isDark ? '#115e59' : '#f0fdfa',
+          iconColor: isDark ? '#2dd4bf' : '#0d9488',
+        };
+      case 'Circular':
+        return {
+          icon: 'speaker.wave.3.fill' as const,
+          bgColor: isDark ? '#3b0764' : '#faf5ff',
+          iconColor: isDark ? '#c084fc' : '#9333ea',
+        };
+      case 'General':
+        return {
+          icon: 'bell.fill' as const,
+          bgColor: isDark ? '#1e293b' : '#f8fafc',
+          iconColor: isDark ? '#38bdf8' : '#0284c7', // Sky-400 / Sky-600
         };
       default:
         return {
@@ -1000,7 +1068,6 @@ const styles = StyleSheet.create({
   },
   urlConfigText: {
     fontSize: 12,
-    fontFamily: 'monospace',
     lineHeight: 16,
     marginBottom: 8,
   },

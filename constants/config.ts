@@ -4,6 +4,12 @@
  */
 
 export const API_CONFIG = {
-  // Modify this URL to point to your notification API
-  API_URL: 'https://8371-2401-4900-b3f4-b4ac-fcc7-3cef-6b1-71d5.ngrok-free.app/school_app_api/api/notification_api.php',
+  // The domain of your notification API backend
+  API_DOMAIN: 'https://2e51-2401-4900-b4e5-6e14-6d89-b3b-f19c-dbcf.ngrok-free.app',
+  // The endpoint path of the notification API
+  API_PATH: '/school_app_api/api/notification_api.php',
+  // Combined API URL
+  get API_URL() {
+    return `${this.API_DOMAIN}${this.API_PATH}`;
+  }
 };
