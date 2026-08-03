@@ -397,8 +397,8 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#121212' : '#ffffff' }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#151718' : '#ffffff' }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#151718' : '#ffffff'} />
       <ThemedView style={styles.container}>
         
         {/* Custom Premium Header */}
@@ -406,7 +406,7 @@ export default function NotificationsScreen() {
           <View style={styles.headerTitleRow}>
             <View>
               <ThemedText type="title" style={styles.headerTitle}>School Updates</ThemedText>
-              <ThemedText style={styles.headerSubtitle}>
+              <ThemedText style={[styles.headerSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
                 {loading 
                   ? 'Checking for updates...' 
                   : unreadCount > 0 
@@ -420,7 +420,7 @@ export default function NotificationsScreen() {
               onPress={handleMarkAllRead}
               style={({ pressed }) => [styles.markReadButton, pressed ? styles.pressedState : undefined]}
             >
-              <ThemedText style={styles.markReadText}>Mark all read</ThemedText>
+              <ThemedText style={[styles.markReadText, { color: isDark ? '#38bdf8' : '#0284c7' }]}>Mark all read</ThemedText>
             </Pressable>
           )}
         </View>
@@ -445,7 +445,7 @@ export default function NotificationsScreen() {
                     style={[
                       styles.categoryPillText,
                       isActive 
-                        ? styles.categoryTextActive
+                        ? (isDark ? { color: '#0f172a' } : styles.categoryTextActive)
                         : (isDark ? styles.categoryTextInactiveDark : styles.categoryTextInactiveLight)
                     ]}
                   >
@@ -461,7 +461,7 @@ export default function NotificationsScreen() {
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={isDark ? '#60a5fa' : '#2563eb'} />
-            <ThemedText style={styles.loadingText}>Fetching updates from school server...</ThemedText>
+            <ThemedText style={[styles.loadingText, { color: isDark ? '#94a3b8' : '#64748b' }]}>Fetching updates from school server...</ThemedText>
           </View>
         ) : error ? (
           <View style={styles.centerContainer}>
@@ -512,7 +512,7 @@ export default function NotificationsScreen() {
                   <IconSymbol name="bell" size={48} color={isDark ? '#64748b' : '#cbd5e1'} />
                 </View>
                 <ThemedText style={styles.emptyTitle}>All Clear!</ThemedText>
-                <ThemedText style={styles.emptySubtitle}>
+                <ThemedText style={[styles.emptySubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
                   No notifications found in {selectedCategory === 'All' ? 'any category' : selectedCategory}.
                 </ThemedText>
               </View>
@@ -610,9 +610,9 @@ export default function NotificationsScreen() {
                       
                       {/* Show toggle controls and bilingual contents when expanded */}
                       {isExpanded ? (
-                        <View style={styles.expandedContent}>
+                        <View style={[styles.expandedContent, { borderTopColor: isDark ? '#334155' : '#e2e8f0' }]}>
                           {/* Language Selector Tabs */}
-                          <View style={styles.languageToggleContainer}>
+                          <View style={[styles.languageToggleContainer, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]}>
                             <Pressable
                               onPress={(e) => {
                                 e.stopPropagation();
@@ -627,7 +627,7 @@ export default function NotificationsScreen() {
                             >
                               <ThemedText style={[
                                 styles.langTabText, 
-                                activeLang === 'en' ? styles.langTabTextActive : undefined
+                                activeLang === 'en' ? [styles.langTabTextActive, { color: isDark ? '#ffffff' : '#0f172a' }] : undefined
                               ]}>
                                 English
                               </ThemedText>
@@ -647,7 +647,7 @@ export default function NotificationsScreen() {
                             >
                               <ThemedText style={[
                                 styles.langTabText, 
-                                activeLang === 'hi' ? styles.langTabTextActive : undefined
+                                activeLang === 'hi' ? [styles.langTabTextActive, { color: isDark ? '#ffffff' : '#0f172a' }] : undefined
                               ]}>
                                 हिंदी (Hindi)
                               </ThemedText>
@@ -668,9 +668,9 @@ export default function NotificationsScreen() {
                               e.stopPropagation();
                               handleToggleExpand(item.id);
                             }}
-                            style={styles.readCollapseButton}
+                            style={[styles.readCollapseButton, { borderColor: isDark ? '#475569' : '#cbd5e1' }]}
                           >
-                            <ThemedText style={styles.readCollapseText}>
+                            <ThemedText style={[styles.readCollapseText, { color: isDark ? '#38bdf8' : '#0284c7' }]}>
                               Close Details
                             </ThemedText>
                           </Pressable>

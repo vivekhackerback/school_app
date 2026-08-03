@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, Text, useWindowDimensions } from 'react-native';
+import { Animated, StyleSheet, View, Text, useWindowDimensions, useColorScheme } from 'react-native';
 import { Image } from 'expo-image';
 
 interface AnimatedSplashScreenProps {
@@ -8,6 +8,8 @@ interface AnimatedSplashScreenProps {
 
 export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScreenProps) {
   const { width } = useWindowDimensions();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   
   // Animation value refs
   const logoScale = useRef(new Animated.Value(0.7)).current;
@@ -63,7 +65,7 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
   }, [logoScale, logoOpacity, textTranslateY, textOpacity, tagOpacity, containerOpacity, onAnimationComplete]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
+    <Animated.View style={[styles.container, { opacity: containerOpacity, backgroundColor: isDark ? '#151718' : '#ffffff' }]}>
       <View style={styles.content}>
         {/* Animated Wrapper for Logo */}
         <Animated.View
@@ -90,23 +92,23 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
             alignItems: 'center',
           }}
         >
-          <Text style={[styles.title, { fontSize: width * 0.075 }]}>
+          <Text style={[styles.title, { fontSize: width * 0.075, color: isDark ? '#ffffff' : '#0f172a' }]}>
             GLOBAL MINDS
           </Text>
-          <Text style={[styles.subtitle, { fontSize: width * 0.045 }]}>
+          <Text style={[styles.subtitle, { fontSize: width * 0.045, color: isDark ? '#fbbf24' : '#b45309' }]}>
             SCHOOL
           </Text>
         </Animated.View>
 
         {/* Animated Tagline */}
         <Animated.View style={{ opacity: tagOpacity, marginTop: 24 }}>
-          <Text style={styles.tagline}>Empowering Future Leaders</Text>
+          <Text style={[styles.tagline, { color: isDark ? '#94a3b8' : '#64748b' }]}>Empowering Future Leaders</Text>
         </Animated.View>
       </View>
       
       {/* Decorative Bottom Bar */}
       <View style={styles.footer}>
-        <View style={styles.line} />
+        <View style={[styles.line, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
       </View>
     </Animated.View>
   );
