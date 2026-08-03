@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, Text, useWindowDimensions, useColorScheme } from 'react-native';
+import { Animated, StyleSheet, View, Text, useWindowDimensions, useColorScheme, Easing } from 'react-native';
 import { Image } from 'expo-image';
 
 interface AnimatedSplashScreenProps {
@@ -12,57 +12,91 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
   const isDark = colorScheme === 'dark';
   
   // Animation value refs
-  const logoScale = useRef(new Animated.Value(0.7)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
+  // Start logoScale at 1.0 and logoOpacity at 1.0 to perfectly continue from the native splash screen layout
+  const logoScale = useRef(new Animated.Value(1.0)).current;
+  const logoOpacity = useRef(new Animated.Value(1.0)).current; 
+  
   const textOpacity = useRef(new Animated.Value(0)).current;
-  const textTranslateY = useRef(new Animated.Value(20)).current;
+  const textTranslateY = useRef(new Animated.Value(25)).current;
+  
   const tagOpacity = useRef(new Animated.Value(0)).current;
+  const tagTranslateY = useRef(new Animated.Value(15)).current;
+  
+  const lineWidth = useRef(new Animated.Value(0)).current;
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Run the intro animations in parallel for instant loading appearance
+    // 1. Kick off the logo premium scale-up (zoom in)
+    Animated.timing(logoScale, {
+      toValue: 1.18, // Continuous zoom in effect
+      duration: 950,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+
+    // 2. Staggered sequence for text components and dividers
     Animated.sequence([
-      // Step 1: Scale and fade in everything together
+      // Delay before the titles begin to slide up
+      Animated.delay(150),
+      
+      // Title texts slide up & fade in
       Animated.parallel([
-        Animated.timing(logoScale, {
-          toValue: 1.0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 350,
-          useNativeDriver: true,
-        }),
         Animated.timing(textTranslateY, {
           toValue: 0,
-          duration: 400,
+          duration: 550,
+          easing: Easing.out(Easing.back(1.1)), // subtle spring-back animation
           useNativeDriver: true,
         }),
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 400,
+          duration: 480,
+          useNativeDriver: true,
+        }),
+      ]),
+
+      // Tagline and Decorative line draw/slide in together
+      Animated.parallel([
+        Animated.timing(tagTranslateY, {
+          toValue: 0,
+          duration: 450,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(tagOpacity, {
           toValue: 1,
-          duration: 300,
+          duration: 450,
+          useNativeDriver: true,
+        }),
+        Animated.timing(lineWidth, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      // Step 2: Keep visible for a brief moment
-      Animated.delay(200),
-      // Step 3: Fade out the entire container
+
+      // Keep screen fully visible for the user to enjoy the complete premium view
+      Animated.delay(1050),
+
+      // Smooth fade out of the entire splash screen
       Animated.timing(containerOpacity, {
         toValue: 0,
-        duration: 250,
+        duration: 350,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Notify parent component that the splash screen animations are fully done
       onAnimationComplete();
     });
-  }, [logoScale, logoOpacity, textTranslateY, textOpacity, tagOpacity, containerOpacity, onAnimationComplete]);
+  }, [
+    logoScale,
+    textTranslateY,
+    textOpacity,
+    tagTranslateY,
+    tagOpacity,
+    lineWidth,
+    containerOpacity,
+    onAnimationComplete,
+  ]);
 
   return (
     <Animated.View style={[styles.container, { opacity: containerOpacity, backgroundColor: isDark ? '#151718' : '#ffffff' }]}>
@@ -73,7 +107,9 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
             styles.logoContainer,
             {
               opacity: logoOpacity,
-              transform: [{ scale: logoScale }],
+              transform: [
+                { scale: logoScale }
+              ],
             },
           ]}
         >
@@ -92,23 +128,23 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
             alignItems: 'center',
           }}
         >
-          <Text style={[styles.title, { fontSize: width * 0.075, color: isDark ? '#ffffff' : '#0f172a' }]}>
+          <Text style={[styles.title, { fontSize: width * 0.078, color: isDark ? '#ffffff' : '#0f172a' }]}>
             GLOBAL MINDS
           </Text>
-          <Text style={[styles.subtitle, { fontSize: width * 0.045, color: isDark ? '#fbbf24' : '#b45309' }]}>
+          <Text style={[styles.subtitle, { fontSize: width * 0.046, color: isDark ? '#fbbf24' : '#b45309' }]}>
             SCHOOL
           </Text>
         </Animated.View>
 
         {/* Animated Tagline */}
-        <Animated.View style={{ opacity: tagOpacity, marginTop: 24 }}>
+        <Animated.View style={{ opacity: tagOpacity, transform: [{ translateY: tagTranslateY }], marginTop: 28 }}>
           <Text style={[styles.tagline, { color: isDark ? '#94a3b8' : '#64748b' }]}>Empowering Future Leaders</Text>
         </Animated.View>
       </View>
       
       {/* Decorative Bottom Bar */}
       <View style={styles.footer}>
-        <View style={[styles.line, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
+        <Animated.View style={[styles.line, { backgroundColor: isDark ? '#334155' : '#e2e8f0', transform: [{ scaleX: lineWidth }] }]} />
       </View>
     </Animated.View>
   );
@@ -117,7 +153,6 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
@@ -128,9 +163,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   logoContainer: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
+    width: 320,
+    height: 320,
+    marginBottom: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -140,13 +175,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: '800',
-    color: '#0f172a', // slate-900
     letterSpacing: 3,
     textAlign: 'center',
   },
   subtitle: {
     fontWeight: '500',
-    color: '#b45309', // amber-700 / gold accent
     letterSpacing: 8,
     textAlign: 'center',
     marginTop: 4,
@@ -154,7 +187,6 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#64748b', // slate-500
     letterSpacing: 1.5,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -168,7 +200,6 @@ const styles = StyleSheet.create({
   line: {
     height: 3,
     width: '100%',
-    backgroundColor: '#e2e8f0', // slate-200
     borderRadius: 2,
   },
 });

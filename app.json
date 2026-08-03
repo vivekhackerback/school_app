@@ -31,11 +31,11 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/global-minds-logo.png",
-          "imageWidth": 250,
+          "imageWidth": 320,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#ffffff"
+            "backgroundColor": "#151718"
           }
         }
       ]

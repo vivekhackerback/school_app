@@ -9,6 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   RefreshControl,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
@@ -212,9 +213,46 @@ export default function NotificationsScreen() {
     }
   }, []);
 
-  // Fetch notifications on mount
+  // Fetch notifications on mount and set up automatic polling every 5 seconds
   useEffect(() => {
+    // Initial fetch with full-screen loading spinner
     fetchNotifications(true);
+
+    let intervalId: NodeJS.Timeout;
+
+    const startPolling = () => {
+      // Clear any existing timer first
+      if (intervalId) clearInterval(intervalId);
+      
+      // Fetch silently every 5 seconds in the background
+      intervalId = setInterval(() => {
+        fetchNotifications(false);
+      }, 5000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+
+    // Start background polling
+    startPolling();
+
+    // Pause polling when app is minimized/in background to preserve battery
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        // App is back in foreground: update immediately, then resume interval
+        fetchNotifications(false);
+        startPolling();
+      } else {
+        // App is hidden: pause timers
+        stopPolling();
+      }
+    });
+
+    return () => {
+      stopPolling();
+      subscription.remove();
+    };
   }, [fetchNotifications]);
 
   // Handle Pull to Refresh
