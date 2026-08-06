@@ -11,8 +11,11 @@ import {
   RefreshControl,
   AppState,
   Image,
+  Linking,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -81,6 +84,14 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // State variables for App Update Modal
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [serverVersion, setServerVersion] = useState<string>('');
+
+  // State and animation for Custom Drawer Menu
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const drawerAnimation = useRef(new Animated.Value(0)).current; // 0 = closed, 1 = open
+
   // Filter and language configurations
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
@@ -145,6 +156,59 @@ export default function NotificationsScreen() {
     outputRange: [0.94, 1.06],
   });
 
+  // App version check logic
+  const checkAppVersion = useCallback(async () => {
+    try {
+      const response = await fetch(API_CONFIG.VERSION_CHECK_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+      }
+      const json = await response.json();
+      if (json.status && json.version) {
+        const localVersion = Constants.expoConfig?.version || '1.0.0';
+        if (localVersion !== json.version) {
+          setServerVersion(json.version);
+          setShowUpdateModal(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check app version from server:', err);
+    }
+  }, []);
+
+  const handleUpdateApp = useCallback(async () => {
+    try {
+      const supported = await Linking.canOpenURL(API_CONFIG.PLAY_STORE_URL);
+      if (supported) {
+        await Linking.openURL(API_CONFIG.PLAY_STORE_URL);
+      } else {
+        // Fallback directly to opening in web browser
+        await Linking.openURL('https://play.google.com/store/apps/details?id=com.gms.schoolapp');
+      }
+    } catch (err) {
+      console.error('Error opening update URL:', err);
+    }
+  }, []);
+
+  const toggleDrawer = useCallback((open: boolean) => {
+    if (open) {
+      setIsDrawerOpen(true);
+      Animated.timing(drawerAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(drawerAnimation, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsDrawerOpen(false);
+      });
+    }
+  }, [drawerAnimation]);
+
   // API Fetching logic (wrapped in useCallback for dependency safety)
   const fetchNotifications = useCallback(async (showLoadingIndicator = true) => {
     if (showLoadingIndicator) {
@@ -152,11 +216,11 @@ export default function NotificationsScreen() {
     }
     setError(null);
     
-    // Create an AbortController to enforce a 6-second timeout limit
+    // Create an AbortController to enforce a 15-second timeout limit
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 6000);
+    }, 15000);
 
     try {
       // Bypass HTTP caching by appending a cache-buster timestamp and headers
@@ -204,7 +268,7 @@ export default function NotificationsScreen() {
       console.error('Fetch error:', err);
       
       if (err.name === 'AbortError') {
-        setError('Connection timed out (6s). The school server took too long to respond. Please check if your ngrok tunnel is running and active.');
+        setError('Connection timed out (15s). The school server took too long to respond. Please check if your ngrok tunnel is running and active.');
       } else {
         setError(err.message || 'Failed to fetch notifications. Please check your network connection.');
       }
@@ -216,23 +280,32 @@ export default function NotificationsScreen() {
 
   // Fetch notifications on mount and set up automatic polling every 5 seconds
   useEffect(() => {
+    // Check app version against server on startup
+    checkAppVersion();
+
     // Initial fetch with full-screen loading spinner
     fetchNotifications(true);
 
-    let intervalId: ReturnType<typeof setInterval>;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let isPollingActive = true;
+
+    const poll = async () => {
+      if (!isPollingActive) return;
+      await fetchNotifications(false);
+      if (isPollingActive) {
+        timeoutId = setTimeout(poll, 5000);
+      }
+    };
 
     const startPolling = () => {
-      // Clear any existing timer first
-      if (intervalId) clearInterval(intervalId);
-      
-      // Fetch silently every 5 seconds in the background
-      intervalId = setInterval(() => {
-        fetchNotifications(false);
-      }, 5000);
+      isPollingActive = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(poll, 5000);
     };
 
     const stopPolling = () => {
-      if (intervalId) clearInterval(intervalId);
+      isPollingActive = false;
+      if (timeoutId) clearTimeout(timeoutId);
     };
 
     // Start background polling
@@ -241,7 +314,7 @@ export default function NotificationsScreen() {
     // Pause polling when app is minimized/in background to preserve battery
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // App is back in foreground: update immediately, then resume interval
+        // App is back in foreground: update immediately, then resume polling
         fetchNotifications(false);
         startPolling();
       } else {
@@ -254,7 +327,7 @@ export default function NotificationsScreen() {
       stopPolling();
       subscription.remove();
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, checkAppVersion]);
 
   // Handle Pull to Refresh
   const onRefresh = () => {
@@ -455,6 +528,12 @@ export default function NotificationsScreen() {
         {/* Custom Premium Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>
+            <Pressable
+              onPress={() => toggleDrawer(true)}
+              style={({ pressed }) => [styles.menuButton, pressed ? styles.pressedState : undefined]}
+            >
+              <IconSymbol name="line.3.horizontal" size={24} color={isDark ? '#f8fafc' : '#0f172a'} />
+            </Pressable>
             <View>
               <ThemedText type="title" style={styles.headerTitle}>School Updates</ThemedText>
               <ThemedText style={[styles.headerSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
@@ -745,6 +824,197 @@ export default function NotificationsScreen() {
             )}
           </ScrollView>
         )}
+
+        {/* Custom Slide-In Side Drawer Menu */}
+        {isDrawerOpen && (
+          <Modal
+            visible={isDrawerOpen}
+            transparent={true}
+            animationType="none"
+            onRequestClose={() => toggleDrawer(false)}
+          >
+            <View style={styles.drawerOverlay}>
+              {/* Fade-in Backdrop */}
+              <Pressable 
+                style={styles.drawerBackdrop} 
+                onPress={() => toggleDrawer(false)} 
+              />
+              
+              {/* Slide-in Content Container */}
+              <Animated.View 
+                style={[
+                  styles.drawerContent,
+                  isDark ? styles.drawerContentDark : styles.drawerContentLight,
+                  {
+                    transform: [
+                      {
+                        translateX: drawerAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-300, 0], // slide from left
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                {/* Drawer Header with School logo and title */}
+                <View style={[styles.drawerHeader, { borderBottomColor: isDark ? '#334155' : '#e2e8f0' }]}>
+                  <Image
+                    source={require('@/assets/images/global-minds-logo.png')}
+                    style={styles.drawerLogo}
+                    resizeMode="contain"
+                  />
+                  <ThemedText style={styles.drawerSchoolName}>Global Minds</ThemedText>
+                  <ThemedText style={[styles.drawerSchoolSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                    School App Portal
+                  </ThemedText>
+                </View>
+
+                {/* Drawer Menu List */}
+                <ScrollView contentContainerStyle={styles.drawerList}>
+                  {/* Menu Option: Notifications (Current/Active) */}
+                  <Pressable
+                    onPress={() => toggleDrawer(false)}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      styles.drawerItemActive,
+                      isDark ? styles.drawerItemActiveDark : styles.drawerItemActiveLight,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="bell.fill" size={20} color={isDark ? '#0f172a' : '#0284c7'} />
+                    <ThemedText style={[styles.drawerItemText, styles.drawerItemTextActive, { color: isDark ? '#0f172a' : '#0284c7' }]}>
+                      Notifications
+                    </ThemedText>
+                    {unreadCount > 0 && (
+                      <View style={styles.drawerBadge}>
+                        <ThemedText style={styles.drawerBadgeText}>{unreadCount}</ThemedText>
+                      </View>
+                    )}
+                  </Pressable>
+
+                  {/* Menu Option: Mock Student Profile */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="person.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>Student Profile</ThemedText>
+                  </Pressable>
+
+                  {/* Menu Option: Mock Academics */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="book.closed.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>Academics</ThemedText>
+                  </Pressable>
+
+                  {/* Menu Option: Mock Payments */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="creditcard.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>Fee Payments</ThemedText>
+                  </Pressable>
+
+                  {/* Menu Option: Mock Settings */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="gearshape.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>App Settings</ThemedText>
+                  </Pressable>
+
+                  {/* Menu Option: Mock Info */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="info.circle.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>About School</ThemedText>
+                  </Pressable>
+                </ScrollView>
+
+                {/* Drawer Footer */}
+                <View style={[styles.drawerFooter, { borderTopColor: isDark ? '#334155' : '#e2e8f0' }]}>
+                  <ThemedText style={[styles.drawerVersionText, { color: isDark ? '#64748b' : '#94a3b8' }]}>
+                    App Version {Constants.expoConfig?.version || '1.0.0'}
+                  </ThemedText>
+                </View>
+              </Animated.View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Update App Modal Alert */}
+        <Modal
+          visible={showUpdateModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowUpdateModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, isDark ? styles.modalContentDark : styles.modalContentLight]}>
+              <View style={[styles.modalHeaderIcon, { backgroundColor: isDark ? '#1e293b' : '#e0f2fe' }]}>
+                <IconSymbol name="arrow.down.circle.fill" size={36} color={isDark ? '#38bdf8' : '#0284c7'} />
+              </View>
+              <ThemedText style={styles.modalTitleText}>New Version Available</ThemedText>
+              <ThemedText style={[styles.modalDescriptionText, { color: isDark ? '#cbd5e1' : '#475569' }]}>
+                An updated version ({serverVersion}) of the app is available on the Play Store. Please update to enjoy the latest features and bug fixes.
+              </ThemedText>
+              <View style={styles.modalActionsRow}>
+                <Pressable
+                  onPress={() => setShowUpdateModal(false)}
+                  style={({ pressed }) => [
+                    styles.modalCancelButton,
+                    isDark ? styles.modalCancelButtonDark : styles.modalCancelButtonLight,
+                    pressed ? styles.pressedState : undefined
+                  ]}
+                >
+                  <ThemedText style={[styles.modalCancelButtonText, { color: isDark ? '#cbd5e1' : '#475569' }]}>Later</ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={handleUpdateApp}
+                  style={({ pressed }) => [
+                    styles.modalUpdateButton,
+                    pressed ? styles.pressedState : undefined
+                  ]}
+                >
+                  <ThemedText style={styles.modalUpdateButtonText}>Update Now</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
       </ThemedView>
     </SafeAreaView>
@@ -1141,6 +1411,208 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+    borderWidth: 1,
+  },
+  modalContentLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  modalContentDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  modalHeaderIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitleText: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalDescriptionText: {
+    fontSize: 13.5,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButtonLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+  },
+  modalCancelButtonDark: {
+    backgroundColor: 'transparent',
+    borderColor: '#475569',
+  },
+  modalCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalUpdateButton: {
+    flex: 1,
+    backgroundColor: '#0284c7', // sky-600
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0284c7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  modalUpdateButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  menuButton: {
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: -8,
+  },
+  drawerOverlay: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawerBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  drawerContent: {
+    width: 280,
+    height: '100%',
+    shadowColor: '#000000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 16,
+    paddingTop: 48,
+    paddingHorizontal: 20,
+    borderRightWidth: 1,
+  },
+  drawerContentLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  drawerContentDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  drawerHeader: {
+    alignItems: 'center',
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    marginBottom: 20,
+  },
+  drawerLogo: {
+    width: 80,
+    height: 80,
+    marginBottom: 12,
+  },
+  drawerSchoolName: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  drawerSchoolSubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  drawerList: {
+    gap: 8,
+    paddingBottom: 20,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  drawerItemActive: {
+    // Overridden by theme variations
+  },
+  drawerItemActiveLight: {
+    backgroundColor: '#eff6ff',
+  },
+  drawerItemActiveDark: {
+    backgroundColor: '#f1f5f9',
+  },
+  drawerItemText: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: '#64748b',
+    flex: 1,
+  },
+  drawerItemTextActive: {
+    fontWeight: '700',
+  },
+  drawerBadge: {
+    backgroundColor: '#e11d48',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawerBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  drawerFooter: {
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerVersionText: {
+    fontSize: 11.5,
+    fontWeight: '500',
   },
   watermarkContainer: {
     position: 'absolute',

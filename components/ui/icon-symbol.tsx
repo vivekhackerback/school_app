@@ -33,6 +33,12 @@ const MAPPING = {
   'doc.append': 'quiz',
   'sun.max.fill': 'beach-access',
   'speaker.wave.3.fill': 'campaign',
+  'arrow.down.circle.fill': 'system-update',
+  'line.3.horizontal': 'menu',
+  'person.fill': 'person',
+  'gearshape.fill': 'settings',
+  'info.circle.fill': 'info',
+  'questionmark.circle.fill': 'help',
 } as IconMapping;
 
 /**
