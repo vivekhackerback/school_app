@@ -13,6 +13,7 @@ import {
   Image,
   Linking,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
@@ -20,6 +21,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { API_CONFIG } from '@/constants/config';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 // Define the notification types and interfaces
 type CategoryType = 'All' | 'Academics' | 'Events' | 'Alerts' | 'Payments';
@@ -78,6 +80,10 @@ export default function NotificationsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   
+  // Setup Push Notification integrations
+  const MOCK_USER_ID = 'student_123';
+  const { expoPushToken, notification, lastNotificationResponse } = usePushNotifications(MOCK_USER_ID);
+
   // State variables for raw API response data and fetching lifecycle
   const [rawNotifications, setRawNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -157,7 +163,7 @@ export default function NotificationsScreen() {
   });
 
   // App version check logic
-  const checkAppVersion = useCallback(async () => {
+  const checkAppVersion = useCallback(async (isManual = false) => {
     try {
       const response = await fetch(API_CONFIG.VERSION_CHECK_URL);
       if (!response.ok) {
@@ -169,10 +175,25 @@ export default function NotificationsScreen() {
         if (localVersion !== json.version) {
           setServerVersion(json.version);
           setShowUpdateModal(true);
+        } else if (isManual) {
+          Alert.alert(
+            "App Up-to-Date",
+            `You are already using the latest version (${localVersion}) of the school portal app.`,
+            [{ text: "OK" }]
+          );
         }
+      } else if (isManual) {
+        throw new Error('Invalid version response format.');
       }
     } catch (err) {
       console.error('Failed to check app version from server:', err);
+      if (isManual) {
+        Alert.alert(
+          "Update Check Failed",
+          "Could not reach the server to check for updates. Please check your internet connection and try again.",
+          [{ text: "OK" }]
+        );
+      }
     }
   }, []);
 
@@ -328,6 +349,36 @@ export default function NotificationsScreen() {
       subscription.remove();
     };
   }, [fetchNotifications, checkAppVersion]);
+
+  // Refresh notifications list when a push notification arrives in the foreground
+  useEffect(() => {
+    if (notification) {
+      fetchNotifications(false);
+    }
+  }, [notification, fetchNotifications]);
+
+  // Handle deep linking / card auto-expansion when a notification is clicked/tapped
+  useEffect(() => {
+    if (lastNotificationResponse) {
+      const responseData = lastNotificationResponse.notification.request.content.data;
+      if (responseData && typeof responseData === 'object') {
+        const recordId = responseData.recordId;
+        const categoryType = responseData.type;
+
+        if (categoryType && typeof categoryType === 'string') {
+          setSelectedCategory(categoryType);
+        }
+
+        if (recordId) {
+          const idStr = String(recordId);
+          fetchNotifications(false).then(() => {
+            setExpandedIds(prev => ({ ...prev, [idStr]: true }));
+            setReadIds(prev => ({ ...prev, [idStr]: true }));
+          });
+        }
+      }
+    }
+  }, [lastNotificationResponse, fetchNotifications]);
 
   // Handle Pull to Refresh
   const onRefresh = () => {
@@ -962,6 +1013,23 @@ export default function NotificationsScreen() {
                     <IconSymbol name="info.circle.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
                     <ThemedText style={styles.drawerItemText}>About School</ThemedText>
                   </Pressable>
+
+                  {/* Menu Option: Check for Update */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                      setTimeout(() => {
+                        checkAppVersion(true);
+                      }, 300);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="arrow.down.circle.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>Check for Update</ThemedText>
+                  </Pressable>
                 </ScrollView>
 
                 {/* Drawer Footer */}
@@ -969,6 +1037,22 @@ export default function NotificationsScreen() {
                   <ThemedText style={[styles.drawerVersionText, { color: isDark ? '#64748b' : '#94a3b8' }]}>
                     App Version {Constants.expoConfig?.version || '1.0.0'}
                   </ThemedText>
+                  {expoPushToken ? (
+                    <Pressable
+                      onPress={() => {
+                        Alert.alert("Expo Push Token", expoPushToken, [{ text: "OK" }]);
+                      }}
+                      style={({ pressed }) => [pressed ? styles.pressedState : undefined]}
+                    >
+                      <ThemedText
+                        numberOfLines={1}
+                        ellipsizeMode="middle"
+                        style={[styles.drawerVersionText, { color: isDark ? '#64748b' : '#94a3b8', fontSize: 10, marginTop: 4 }]}
+                      >
+                        Token: {expoPushToken}
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
                 </View>
               </Animated.View>
             </View>

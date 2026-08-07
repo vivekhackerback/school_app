@@ -18,6 +18,12 @@ export const API_CONFIG = {
   get VERSION_CHECK_URL() {
     return `${this.API_DOMAIN}${this.VERSION_CHECK_PATH}`;
   },
+  // The endpoint path to save push notification tokens
+  SAVE_TOKEN_PATH: '/api/save_token.php',
+  // Combined save token API URL
+  get SAVE_TOKEN_URL() {
+    return `${this.API_DOMAIN}${this.SAVE_TOKEN_PATH}`;
+  },
   // Google Play Store URL for updates
   PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.gms.schoolapp'
 };
