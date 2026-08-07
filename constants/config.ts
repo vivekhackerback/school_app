@@ -5,7 +5,9 @@
 
 export const API_CONFIG = {
   // The domain of your notification API backend
-  API_DOMAIN: 'https://gms.tplpro.in',
+  // API_DOMAIN: 'https://gms.tplpro.in',
+  API_DOMAIN: 'https://2d47-2401-4900-3e24-9201-3578-2691-bbb-ed91.ngrok-free.app/school_app_api',
+  
   // The endpoint path of the notification API
   API_PATH: '/api/notification_api.php',
   // Combined API URL

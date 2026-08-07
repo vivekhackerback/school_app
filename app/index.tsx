@@ -164,8 +164,17 @@ export default function NotificationsScreen() {
 
   // App version check logic
   const checkAppVersion = useCallback(async (isManual = false) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000); // 5 seconds version check timeout limit
+
     try {
-      const response = await fetch(API_CONFIG.VERSION_CHECK_URL);
+      const response = await fetch(API_CONFIG.VERSION_CHECK_URL, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
       }
@@ -185,12 +194,16 @@ export default function NotificationsScreen() {
       } else if (isManual) {
         throw new Error('Invalid version response format.');
       }
-    } catch (err) {
+    } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error('Failed to check app version from server:', err);
       if (isManual) {
+        const errorMsg = err.name === 'AbortError' 
+          ? "Network timeout (5s) checking for updates." 
+          : (err.message || "Failed to check for updates.");
         Alert.alert(
           "Update Check Failed",
-          "Could not reach the server to check for updates. Please check your internet connection and try again.",
+          errorMsg,
           [{ text: "OK" }]
         );
       }
@@ -237,11 +250,11 @@ export default function NotificationsScreen() {
     }
     setError(null);
     
-    // Create an AbortController to enforce a 15-second timeout limit
+    // Create an AbortController to enforce a 5-second timeout limit
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 15000);
+    }, 5000);
 
     try {
       // Bypass HTTP caching by appending a cache-buster timestamp and headers

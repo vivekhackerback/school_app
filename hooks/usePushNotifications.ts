@@ -5,16 +5,22 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { API_CONFIG } from '@/constants/config';
 
-// Configure foreground notifications behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// 1. Detect if running inside standard Expo Go store client
+const executionEnv = Constants.executionEnvironment as string;
+const isExpoGo = executionEnv === 'expo' || executionEnv === 'store-client';
+
+// 2. Configure foreground behavior conditionally (bypassing under Expo Go to prevent crashes)
+if (!isExpoGo) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /**
  * Custom hook to manage Expo Push Notifications setup and registration.
@@ -30,6 +36,12 @@ export function usePushNotifications(userId: string | null) {
 
   // Core registration logic matching user specifications
   async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+    // A. Return mock token immediately if inside Expo Go to avoid calling any native API
+    if (isExpoGo) {
+      console.warn("Expo Go does not support remote push notifications in Android for SDK 54. Returning a mock token for local testing.");
+      return `ExponentPushToken[MockTokenForLocalExpoGoTesting-${userId || 'guest'}]`;
+    }
+
     let token: string | undefined;
 
     // Create notification channel for Android (required for SDK 26+)
@@ -40,16 +52,6 @@ export function usePushNotifications(userId: string | null) {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
       });
-    }
-
-    // 1. Detect if running inside standard Expo Go
-    const executionEnv = Constants.executionEnvironment as string;
-    const isExpoGo = executionEnv === 'expo' || executionEnv === 'store-client';
-    
-    if (isExpoGo) {
-      console.warn("Expo Go does not support remote push notifications in Android for SDK 54. Returning a mock token for local testing.");
-      // Return a stable, valid-format mock token to test the API registration and MySQL storage flow
-      return `ExponentPushToken[MockTokenForLocalExpoGoTesting-${userId || 'guest'}]`;
     }
 
     if (!Device.isDevice) {
@@ -98,6 +100,11 @@ export function usePushNotifications(userId: string | null) {
 
   // Upload/sync device token with server
   async function syncTokenWithBackend(token: string, currentUserId: string) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000); // 5 seconds request timeout limit
+
     try {
       const response = await fetch(API_CONFIG.SAVE_TOKEN_URL, {
         method: 'POST',
@@ -111,8 +118,10 @@ export function usePushNotifications(userId: string | null) {
           platform: Platform.OS,
           device_name: Device.modelName || 'Unknown Device',
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const responseText = await response.text();
       let result;
       try {
@@ -125,8 +134,13 @@ export function usePushNotifications(userId: string | null) {
         throw new Error(result.message || 'Failed saving token to backend.');
       }
       console.log('Expo Push Token registered on server successfully.');
-    } catch (error) {
-      console.error('Failed to sync push token with backend:', error);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        console.error('Failed to sync push token with backend: Network request timed out (5s).');
+      } else {
+        console.error('Failed to sync push token with backend:', error.message || error);
+      }
     }
   }
 
@@ -139,9 +153,6 @@ export function usePushNotifications(userId: string | null) {
 
       if (token) {
         setExpoPushToken(token);
-        if (userId) {
-          await syncTokenWithBackend(token, userId);
-        }
       }
     }
 
@@ -152,14 +163,23 @@ export function usePushNotifications(userId: string | null) {
     };
   }, [userId]);
 
-  // Handle case where user logs in or user ID becomes available after token is retrieved
+  // Log token and handle case where user ID becomes available after token is retrieved
   useEffect(() => {
-    if (expoPushToken && userId) {
-      syncTokenWithBackend(expoPushToken, userId);
+    if (expoPushToken) {
+      console.log("\n================ EXPO PUSH TOKEN ================");
+      console.log(expoPushToken);
+      console.log("=================================================\n");
+      
+      if (userId) {
+        syncTokenWithBackend(expoPushToken, userId);
+      }
     }
   }, [expoPushToken, userId]);
 
   useEffect(() => {
+    // 3. Skip setting up native event listeners in Expo Go client to prevent native wrapper crashes
+    if (isExpoGo) return;
+
     // Listener for foreground notifications
     notificationListener.current = Notifications.addNotificationReceivedListener((incomingNotif) => {
       console.log("Foreground notification received:", incomingNotif);
