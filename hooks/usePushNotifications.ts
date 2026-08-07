@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, ToastAndroid } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -36,6 +36,10 @@ export function usePushNotifications(userId: string | null) {
 
   // Core registration logic matching user specifications
   async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+    // Temporarily disabled to avoid Firebase errors
+    console.log("Push notifications are temporarily disabled.");
+    return undefined;
+
     // A. Return mock token immediately if inside Expo Go to avoid calling any native API
     if (isExpoGo) {
       console.warn("Expo Go does not support remote push notifications in Android for SDK 54. Returning a mock token for local testing.");
@@ -130,10 +134,15 @@ export function usePushNotifications(userId: string | null) {
         throw new Error(`Invalid server response: ${responseText}`);
       }
 
-      if (!response.ok || !result.status) {
+      if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed saving token to backend.');
       }
       console.log('Expo Push Token registered on server successfully.');
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Push token saved to server successfully', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Token Saved', 'Push token saved to server successfully');
+      }
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
