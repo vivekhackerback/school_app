@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "expo": {
+      "$ref": "https://docs.expo.dev/static/schemas/v54.0.0/app-config-schema.json"
+    }
+  },
+  "required": [
+    "expo"
+  ]
+}
