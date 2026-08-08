@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "ycom.school.app"
+      "package": "com.tplpro.gms",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

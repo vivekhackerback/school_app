@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "182300663550",
+    "project_id": "gms-app-9da8f",
+    "storage_bucket": "gms-app-9da8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:182300663550:android:413fc74e8fb717027a0faf",
+        "android_client_info": {
+          "package_name": "com.tplpro.gms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3NlLnmKY5J10dHXh2BgEQTQcjyRf3l7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
