@@ -26,6 +26,12 @@ export const API_CONFIG = {
   get SAVE_TOKEN_URL() {
     return `${this.API_DOMAIN}${this.SAVE_TOKEN_PATH}`;
   },
+  // The endpoint path to record notification receipt / acknowledgement
+  RECEIPT_PATH: '/api/notification_receipt.php',
+  // Combined notification receipt API URL
+  get RECEIPT_URL() {
+    return `${this.API_DOMAIN}${this.RECEIPT_PATH}`;
+  },
   // Google Play Store URL for updates
   PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.gms.schoolapp'
 };

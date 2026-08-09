@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform, Alert, ToastAndroid } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -181,20 +181,119 @@ export function usePushNotifications(userId: string | null) {
     }
   }, [expoPushToken, userId]);
 
+  // In-memory set to prevent duplicate receipt network requests
+  const processedReceipts = useRef<Set<string>>(new Set());
+
+  /**
+   * Reusable function to send push notification receipt/acknowledgement to PHP backend.
+   * Extracts notification details, device metadata, timestamp, and dispatches JSON POST request safely.
+   */
+  const sendNotificationReceipt = useCallback(async (
+    incomingNotification: Notifications.Notification,
+    eventType: 'received' | 'opened' = 'received',
+    tokenOverride?: string
+  ) => {
+    try {
+      const activeToken = tokenOverride || expoPushToken;
+      const content = incomingNotification.request?.content || {};
+      const notifData = content.data || {};
+
+      // Extract unique notification_id (checks recordId, notification_id, id, or Expo identifier fallback)
+      const rawId =
+        notifData.recordId ??
+        notifData.notification_id ??
+        notifData.id ??
+        incomingNotification.request?.identifier;
+      const notificationId = rawId ? String(rawId) : `notif_${Date.now()}`;
+
+      // Deduplication check per event type
+      const receiptKey = `${notificationId}_${eventType}`;
+      if (processedReceipts.current.has(receiptKey)) {
+        console.log(`[Receipt] Event '${receiptKey}' already logged. Skipping duplicate request.`);
+        return;
+      }
+      processedReceipts.current.add(receiptKey);
+
+      const payload = {
+        notification_id: notificationId,
+        expo_push_token: activeToken || 'ExponentPushToken[NOT_AVAILABLE]',
+        title: content.title || '',
+        body: content.body || '',
+        received_at: new Date().toISOString(),
+        event_type: eventType,
+        data: notifData,
+        device_info: {
+          platform: Platform.OS,
+          model_name: Device.modelName || 'Unknown Device',
+          os_version: Device.osVersion || '',
+          app_version: Constants.expoConfig?.version || '1.0.0',
+        },
+      };
+
+      console.log(`[Receipt] Dispathing notification receipt (${eventType}):`, payload);
+
+      // Async fetch call wrapped in 5s AbortController timeout to guarantee non-blocking behavior
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 5000);
+
+      const response = await fetch(API_CONFIG.RECEIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        console.warn('[Receipt] Server response parsing failed:', responseText);
+      }
+
+      if (response.ok && result?.success) {
+        console.log(`[Receipt] Server acknowledged notification ${notificationId} (${eventType}).`);
+      } else {
+        console.warn(`[Receipt] Server returned error for ${notificationId}:`, result?.message || responseText);
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.error('[Receipt] Network timeout (5s) sending notification receipt to server.');
+      } else {
+        console.error('[Receipt] Error sending notification receipt:', error.message || error);
+      }
+    }
+  }, [expoPushToken]);
+
   useEffect(() => {
     // 3. Skip setting up native event listeners in Expo Go client to prevent native wrapper crashes
     if (isExpoGo) return;
 
-    // Listener for foreground notifications
+    // Listener for incoming/received notifications
     notificationListener.current = Notifications.addNotificationReceivedListener((incomingNotif) => {
       console.log("Foreground notification received:", incomingNotif);
       setNotification(incomingNotif);
+
+      // Send receipt immediately without blocking notification presentation
+      sendNotificationReceipt(incomingNotif, 'received');
     });
 
-    // Listener for tapped notifications
+    // Listener for notification response (user tapped/opened notification)
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       console.log("Notification response received (tapped):", response);
       setLastNotificationResponse(response);
+
+      // Send response receipt immediately for tapped notification
+      if (response?.notification) {
+        sendNotificationReceipt(response.notification, 'opened');
+      }
     });
 
     return () => {
@@ -205,11 +304,12 @@ export function usePushNotifications(userId: string | null) {
         responseListener.current.remove();
       }
     };
-  }, []);
+  }, [sendNotificationReceipt]);
 
   return {
     expoPushToken,
     notification,
     lastNotificationResponse,
+    sendNotificationReceipt,
   };
 }
