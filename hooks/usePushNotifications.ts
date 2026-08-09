@@ -36,10 +36,6 @@ export function usePushNotifications(userId: string | null) {
 
   // Core registration logic matching user specifications
   async function registerForPushNotificationsAsync(): Promise<string | undefined> {
-    // Temporarily disabled to avoid Firebase errors
-    console.log("Push notifications are temporarily disabled.");
-    return undefined;
-
     // A. Return mock token immediately if inside Expo Go to avoid calling any native API
     if (isExpoGo) {
       console.warn("Expo Go does not support remote push notifications in Android for SDK 54. Returning a mock token for local testing.");
