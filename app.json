@@ -1,26 +1,33 @@
 {
   "expo": {
-    "name": "school_app",
-    "slug": "school_app",
+    "name": "Global Minds School",
+    "slug": "global-minds-school",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "schoolapp",
+    "icon": "./assets/app_icon.png",
+    "scheme": "globalmindsschool",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tplpro.globalmindsschool"
     },
     "android": {
+      "package": "com.tplpro.globalmindsschool",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "INTERNET",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tplpro.gms",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -33,7 +40,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/global-minds-logo.png",
-          "imageWidth": 320,
+          "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
@@ -61,3 +68,4 @@
     }
   }
 }
+

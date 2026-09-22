@@ -90,8 +90,9 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State variables for App Update Modal
+  // State variables for App Update and Privacy Policy Modals
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
   const [serverVersion, setServerVersion] = useState<string>('');
 
   // State and animation for Custom Drawer Menu
@@ -1043,6 +1044,23 @@ export default function NotificationsScreen() {
                     <IconSymbol name="arrow.down.circle.fill" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
                     <ThemedText style={styles.drawerItemText}>Check for Update</ThemedText>
                   </Pressable>
+
+                  {/* Menu Option: Privacy Policy */}
+                  <Pressable
+                    onPress={() => {
+                      toggleDrawer(false);
+                      setTimeout(() => {
+                        setShowPrivacyModal(true);
+                      }, 250);
+                    }}
+                    style={({ pressed }) => [
+                      styles.drawerItem,
+                      pressed ? styles.pressedState : undefined
+                    ]}
+                  >
+                    <IconSymbol name="shield.lefthalf.filled" size={20} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <ThemedText style={styles.drawerItemText}>Privacy Policy</ThemedText>
+                  </Pressable>
                 </ScrollView>
 
                 {/* Drawer Footer */}
@@ -1107,6 +1125,46 @@ export default function NotificationsScreen() {
                   ]}
                 >
                   <ThemedText style={styles.modalUpdateButtonText}>Update Now</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Privacy Policy Modal */}
+        <Modal
+          visible={showPrivacyModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPrivacyModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, isDark ? styles.modalContentDark : styles.modalContentLight, { maxHeight: '80%', width: '90%' }]}>
+              <View style={[styles.modalHeaderIcon, { backgroundColor: isDark ? '#1e293b' : '#e0f2fe' }]}>
+                <IconSymbol name="shield.lefthalf.filled" size={36} color={isDark ? '#38bdf8' : '#0284c7'} />
+              </View>
+              <ThemedText style={styles.modalTitleText}>Privacy Policy</ThemedText>
+              <ThemedText style={[styles.modalSubtitleText, { color: isDark ? '#94a3b8' : '#64748b', fontSize: 12, marginBottom: 12 }]}>
+                Global Minds School &bull; Play Store Compliant
+              </ThemedText>
+              <ScrollView style={{ maxHeight: 260, marginVertical: 8 }} showsVerticalScrollIndicator={true}>
+                <ThemedText style={[styles.modalDescriptionText, { color: isDark ? '#cbd5e1' : '#334155', textAlign: 'left', fontSize: 13, lineHeight: 20 }]}>
+                  {"\u2022"} <ThemedText style={{ fontWeight: '700' }}>Information Collected:</ThemedText> Student/Parent name, roll number, academic notices, and device push notification tokens.{"\n\n"}
+                  {"\u2022"} <ThemedText style={{ fontWeight: '700' }}>Permissions Used:</ThemedText> Internet (secure HTTPS school API sync), Post Notifications (school alerts & attendance notices), and Vibrate.{"\n\n"}
+                  {"\u2022"} <ThemedText style={{ fontWeight: '700' }}>Children's Privacy:</ThemedText> Fully compliant with COPPA, FERPA, and Google Play Families policy. Student records are never sold or used for advertisements.{"\n\n"}
+                  {"\u2022"} <ThemedText style={{ fontWeight: '700' }}>Data Deletion:</ThemedText> Users or guardians can request complete account/data removal by contacting support@globalmindsschool.edu.
+                </ThemedText>
+              </ScrollView>
+              <View style={[styles.modalActionsRow, { marginTop: 16 }]}>
+                <Pressable
+                  onPress={() => setShowPrivacyModal(false)}
+                  style={({ pressed }) => [
+                    styles.modalUpdateButton,
+                    { flex: 1 },
+                    pressed ? styles.pressedState : undefined
+                  ]}
+                >
+                  <ThemedText style={styles.modalUpdateButtonText}>Close</ThemedText>
                 </Pressable>
               </View>
             </View>
