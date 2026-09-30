@@ -11,5 +11,6 @@
       ],
       "url": "./.vscode/app-schema.json"
     }
-  ]
+  ],
+  "java.configuration.updateBuildConfiguration": "interactive"
 }
