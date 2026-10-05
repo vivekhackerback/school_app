@@ -55,20 +55,26 @@ export function usePushNotifications(userId: string | null) {
     }
 
     if (!Device.isDevice) {
-      Alert.alert("Push Notification Warning", "Use a physical device. Push notifications do not run on simulators.");
+      console.log("[PushNotifications] Running on simulator/virtual device. Skipping push token registration.");
       return undefined;
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    let finalStatus = 'undetermined';
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+    } catch (permError) {
+      console.warn("[PushNotifications] Could not check or request permissions:", permError);
+      return undefined;
     }
 
     if (finalStatus !== 'granted') {
-      Alert.alert("Permission Error", "Permission not granted for push notifications.");
+      console.log("[PushNotifications] Permission not granted for push notifications.");
       return undefined;
     }
 
@@ -78,10 +84,7 @@ export function usePushNotifications(userId: string | null) {
       Constants?.easConfig?.projectId;
 
     if (!projectId) {
-      Alert.alert(
-        "Configuration Missing",
-        "EAS Project ID not found in app.json configuration. Please run 'npx eas init' to configure your project, or test within Expo Go."
-      );
+      console.warn("[PushNotifications] EAS Project ID not found in app configuration.");
       return undefined;
     }
 
@@ -89,10 +92,9 @@ export function usePushNotifications(userId: string | null) {
       // Get the token (passing projectId as required in SDK 54)
       const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
       token = tokenObj.data;
-      console.log("Expo Push Token generated successfully:", token);
+      console.log("[PushNotifications] Expo Push Token generated:", token);
     } catch (e: any) {
-      console.error("Error fetching Expo push token:", e);
-      Alert.alert("Token Retrieval Failed", e.message || "Failed to fetch push token.");
+      console.warn("[PushNotifications] Non-fatal: Failed to fetch push token:", e?.message || e);
     }
 
     return token;
@@ -127,24 +129,21 @@ export function usePushNotifications(userId: string | null) {
       try {
         result = JSON.parse(responseText);
       } catch {
-        throw new Error(`Invalid server response: ${responseText}`);
+        console.warn(`[PushNotifications] Invalid server response saving token: ${responseText}`);
+        return;
       }
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Failed saving token to backend.');
-      }
-      console.log('Expo Push Token registered on server successfully.');
-      if (Platform.OS === 'android') {
-        ToastAndroid.show('Push token saved to server successfully', ToastAndroid.SHORT);
+      if (response.ok && result?.success) {
+        console.log('[PushNotifications] Push token registered on server successfully.');
       } else {
-        Alert.alert('Token Saved', 'Push token saved to server successfully');
+        console.warn('[PushNotifications] Server returned error saving token:', result?.message || responseText);
       }
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        console.error('Failed to sync push token with backend: Network request timed out (5s).');
+        console.warn('[PushNotifications] Push token sync timed out (5s).');
       } else {
-        console.error('Failed to sync push token with backend:', error.message || error);
+        console.warn('[PushNotifications] Push token sync error:', error.message || error);
       }
     }
   }

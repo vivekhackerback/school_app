@@ -33,5 +33,5 @@ export const API_CONFIG = {
     return `${this.API_DOMAIN}${this.RECEIPT_PATH}`;
   },
   // Google Play Store URL for updates
-  PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.gms.schoolapp'
+  PLAY_STORE_URL: 'https://play.google.com/store/apps/details?id=com.tplpro.globalmindsschool'
 };

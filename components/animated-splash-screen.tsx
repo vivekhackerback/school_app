@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Animated, StyleSheet, View, Text, useWindowDimensions, useColorScheme, Easing } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -25,81 +25,91 @@ export function AnimatedSplashScreen({ onAnimationComplete }: AnimatedSplashScre
   const lineWidth = useRef(new Animated.Value(0)).current;
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
+  const completedRef = useRef(false);
+
+  const safeComplete = useCallback(() => {
+    if (!completedRef.current) {
+      completedRef.current = true;
+      onAnimationComplete();
+    }
+  }, [onAnimationComplete]);
+
   useEffect(() => {
-    // 1. Kick off the logo premium scale-up (zoom in)
+    // Failsafe timer: even if animation is cancelled or frames drop, dismiss splash within 1400ms
+    const safetyTimer = setTimeout(() => {
+      safeComplete();
+    }, 1400);
+
+    // 1. Kick off the logo scale-up
     Animated.timing(logoScale, {
-      toValue: 1.18, // Continuous zoom in effect
-      duration: 950,
+      toValue: 1.12,
+      duration: 600,
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     }).start();
 
-    // 2. Staggered sequence for text components and dividers
+    // 2. Streamlined sequence
     Animated.sequence([
-      // Delay before the titles begin to slide up
-      Animated.delay(150),
-      
+      Animated.delay(100),
       // Title texts slide up & fade in
       Animated.parallel([
         Animated.timing(textTranslateY, {
           toValue: 0,
-          duration: 550,
-          easing: Easing.out(Easing.back(1.1)), // subtle spring-back animation
+          duration: 350,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 480,
+          duration: 300,
           useNativeDriver: true,
         }),
       ]),
 
-      // Tagline and Decorative line draw/slide in together
+      // Tagline and Decorative line
       Animated.parallel([
         Animated.timing(tagTranslateY, {
           toValue: 0,
-          duration: 450,
+          duration: 300,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(tagOpacity, {
           toValue: 1,
-          duration: 450,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(lineWidth, {
           toValue: 1,
-          duration: 600,
+          duration: 350,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
 
-      // Keep screen fully visible for the user to enjoy the complete premium view
-      Animated.delay(1050),
+      // Brief display pause
+      Animated.delay(350),
 
-      // Smooth fade out of the entire splash screen
+      // Smooth fade out
       Animated.timing(containerOpacity, {
         toValue: 0,
-        duration: 350,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onAnimationComplete();
+      safeComplete();
     });
-  }, [
-    logoScale,
-    textTranslateY,
-    textOpacity,
-    tagTranslateY,
-    tagOpacity,
-    lineWidth,
-    containerOpacity,
-    onAnimationComplete,
-  ]);
+
+    return () => {
+      clearTimeout(safetyTimer);
+    };
+  }, [safeComplete, logoScale, textTranslateY, textOpacity, tagTranslateY, tagOpacity, lineWidth, containerOpacity]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: containerOpacity, backgroundColor: isDark ? '#151718' : '#ffffff' }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.container, { opacity: containerOpacity, backgroundColor: isDark ? '#151718' : '#ffffff' }]}
+    >
       <View style={styles.content}>
         {/* Animated Wrapper for Logo */}
         <Animated.View

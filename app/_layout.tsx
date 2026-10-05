@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 
@@ -18,15 +18,15 @@ export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [splashAnimationComplete, setSplashAnimationComplete] = useState(false);
 
+  const handleSplashComplete = useCallback(() => {
+    setSplashAnimationComplete(true);
+  }, []);
+
   useEffect(() => {
     async function prepare() {
       try {
-        // App is immediately ready to mount.
-      } catch {
-        // Handled silently
-      } finally {
         setAppReady(true);
-        // Hide native splash screen so the animated one can play
+      } finally {
         try {
           await SplashScreen.hideAsync();
         } catch {
@@ -36,10 +36,19 @@ export default function RootLayout() {
     }
 
     prepare();
+
+    // Absolute fallback safety: ensure the app reaches the main screen within 1800ms
+    const safetyTimer = setTimeout(() => {
+      setAppReady(true);
+      setSplashAnimationComplete(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }, 1800);
+
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   if (!appReady) {
-    return null; // Keep rendering native splash screen
+    return null; // Keep rendering native splash screen briefly
   }
 
   return (
@@ -49,7 +58,7 @@ export default function RootLayout() {
       </Stack>
       <StatusBar style="auto" />
       {!splashAnimationComplete && (
-        <AnimatedSplashScreen onAnimationComplete={() => setSplashAnimationComplete(true)} />
+        <AnimatedSplashScreen onAnimationComplete={handleSplashComplete} />
       )}
     </ThemeProvider>
   );
