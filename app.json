@@ -2,7 +2,7 @@
   "expo": {
     "name": "Global Minds School",
     "slug": "global-minds-school",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/app_icon.png",
     "scheme": "globalmindsschool",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.tplpro.globalmindsschool",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
